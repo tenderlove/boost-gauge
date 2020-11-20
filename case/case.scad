@@ -4,7 +4,7 @@ GAUGE_X_BUFFER = 2;
 GAUGE_Y_BUFFER = 2;
 GAUGE_X        = GAUGE_FACE_X + GAUGE_X_BUFFER;
 GAUGE_Y        = GAUGE_FACE_Y + GAUGE_Y_BUFFER;
-GAUGE_LEN      = 31;
+GAUGE_LEN      = 31; // Measured from the back to behind the ridge
 GAUGE_DIAMETER = 45.5;
 GAUGE_RADIUS   = GAUGE_DIAMETER / 2;
 SCREW_DIAMETER = 5;
@@ -46,6 +46,47 @@ module FrontPlate() {
     }
 }
 
+module FrontBottomPlate() {
+  gauge_side_z = FRONT_PLATE_DEPTH + GAUGE_TAB_DEPTH + TAB_DEPTH;
+  radius       = gauge_side_z / sin(90 - GAUGE_MOUNT_ANGLE);
+  foot_l = (GAUGE_LEN * cos(GAUGE_MOUNT_ANGLE)) +
+    radius +
+    (45 * cos(180 - 90 - GAUGE_MOUNT_ANGLE));
+
+  angle = 90 - GAUGE_MOUNT_ANGLE;
+  front_leg_z = (GAUGE_LEN * sin(angle)) + 5;
+
+  hole_diameter = 3.5;
+  tab_ring = 2;
+
+  difference() {
+    linear_extrude(FRONT_PLATE_DEPTH)
+      square([GAUGE_X * 4,  front_leg_z]);
+
+    h = FRONT_PLATE_DEPTH / sin(angle);
+    o = FRONT_PLATE_DEPTH * sin(90 - angle);
+    color("blue")
+      translate([-1, 0, 0])
+      rotate([angle, 0, 0])
+      linear_extrude(o)
+      square([(GAUGE_X * 4) + 2,  h]);
+  }
+
+
+  $fn = 90;
+
+  translate([(hole_diameter + tab_ring) / 2, front_leg_z / 2])
+    linear_extrude(FRONT_PLATE_DEPTH + 3)
+    circle(d = (hole_diameter - 0.3));
+
+  translate([(GAUGE_X * 4) - ((hole_diameter + tab_ring) / 2), front_leg_z / 2])
+    linear_extrude(FRONT_PLATE_DEPTH + 3)
+    circle(d = hole_diameter);
+}
+
+module TopPlate() {
+}
+
 module Tab(gauge_x) {
   $fn = 90;
 
@@ -68,38 +109,45 @@ module Tab(gauge_x) {
   }
 }
 
-module prism(l, w, h){
-  polyhedron(
-      points=[[0,0,0], [l,0,0], [l,w,0], [0,w,0], [0,w,h], [l,w,h]],
-      faces=[[0,1,2,3],[5,4,3,2],[0,4,5,1],[0,3,4],[5,2,1]]
-      );
-}
+module GaugeMount(distance_to_back, bar_x) {
+  buffer_len = (cos(90 - GAUGE_MOUNT_ANGLE) * distance_to_back) / cos(GAUGE_MOUNT_ANGLE);
+  base = sqrt(pow(distance_to_back, 2) + pow(buffer_len, 2));
 
+  module EndCap(distance_to_back, buffer_len, base) {
+    angle = GAUGE_MOUNT_ANGLE;
+    o = sin(angle) * base;
+    m =  sin(angle) * distance_to_back;
+    color("red")
+      translate([-(distance_to_back / 2), ((GAUGE_Y + buffer_len) / 2) - o, 0])
+      rotate([0, 0, angle])
+      // Make it slightly longer and taller for rendering issues
+      square(size = [base + 1, m + 1]);
+  }
 
-module GaugeMount(gauge_x, bar_x, bar_y, bar_z) {
-  radius          = bar_z * tan(GAUGE_MOUNT_ANGLE);
+  translate([0, 0, (distance_to_back / 2)])
+    rotate([0, 90, 0])
+    translate([0, 0, -(bar_x / 2)])
+    linear_extrude(bar_x)
+    difference() {
+      color("green")
+        square(size = [distance_to_back, GAUGE_Y + buffer_len], center = true);
 
-  translate([0, -(radius / 2), 0]) {
-    translate([-(gauge_x + (bar_x / 2)), radius / 2, 0]) {
-      translate([gauge_x + (bar_x / 2), 0, 0])
-        linear_extrude(bar_z)
-        square(size = [bar_x, bar_y], center = true);
+      EndCap(distance_to_back, buffer_len, base);
 
-      translate([gauge_x + bar_x, -((bar_y / 2) + radius), bar_z])
-        rotate([0, 180, 0])
-        prism(bar_x, radius, bar_z);
-
-      translate([bar_x + gauge_x, (bar_y / 2) + radius, 0])
-        rotate([0, 0, 180])
-        prism(bar_x, radius, bar_z);
+      mirror([1, 0, 0])
+        mirror([0, 1, 0])
+        EndCap(distance_to_back, buffer_len, base);
     }
 
-    translate([-(gauge_x + (bar_x / 2)), 0, 0]) {
-      translate([SCREW_OFFSET_X, SCREW_OFFSET_Y, 0])
-        Tab(gauge_x);
-      translate([SCREW_OFFSET_X, -SCREW_OFFSET_Y, 0])
-        Tab(gauge_x);
-    }
+  gauge_x = GAUGE_X;
+
+  color("blue")
+  translate([0, -(buffer_len / 2), 0])
+  translate([-((gauge_x + bar_x) / 2), 0, 0]) {
+    translate([SCREW_OFFSET_X, SCREW_OFFSET_Y, 0])
+      Tab(gauge_x / 2);
+    translate([SCREW_OFFSET_X, -SCREW_OFFSET_Y, 0])
+      Tab(gauge_x / 2);
   }
 }
 
@@ -119,9 +167,8 @@ module TopTab(d, t, z) {
   }
 }
 
-module SideBar(wall) {
+module SideBar(gauge_side_z, wall) {
   gauge_side_x = 2;
-  gauge_side_z = FRONT_PLATE_DEPTH + GAUGE_TAB_DEPTH + TAB_DEPTH;
   gauge_side_y = (GAUGE_Y - (gauge_side_z * tan(GAUGE_MOUNT_ANGLE)));
   radius       = gauge_side_z / sin(90 - GAUGE_MOUNT_ANGLE);
 
@@ -141,12 +188,7 @@ module SideBar(wall) {
           ((gauge_side_y / 2) * sin(90 - GAUGE_MOUNT_ANGLE)) + front_leg_z,
       ])
         rotate([90 - GAUGE_MOUNT_ANGLE, 0, 0])
-        if (wall) {
-          GaugeMount(GAUGE_X / 2, gauge_side_x, gauge_side_y, gauge_side_z);
-        } else {
-          GaugeMount(GAUGE_FACE_X / 2, gauge_side_x, gauge_side_y, gauge_side_z);
-        }
-
+        GaugeMount(gauge_side_z, gauge_side_x);
     }
 
       // Vertical Bar
@@ -174,12 +216,17 @@ module SideBar(wall) {
           square(size = [gauge_top_x, foot_l]);
       }
 
+      h = FRONT_PLATE_DEPTH + GAUGE_TAB_DEPTH + GAUGE_LEN;
+      a = h * cos(GAUGE_MOUNT_ANGLE);
+
       // Top
-      translate([gauge_top_x - (foot_z / 2), foot_l / 2, 0])
+      color("red")
+      translate([gauge_top_x - gauge_side_x, foot_l - a - gauge_side_x, 0])
         linear_extrude(gauge_side_x)
-        square(size = [foot_z, foot_l], center = true);
+        square(size = [2, a]);
     }
 
+    color("green")
     translate([front_leg_z - x, -y, -1])
       linear_extrude(gauge_side_x + 5)
       rotate(GAUGE_MOUNT_ANGLE)
@@ -198,25 +245,62 @@ module SideBar(wall) {
   tab_ring = 2;
   tab_size = tab_hole + tab_ring;
   translate([gauge_top_x - top_bar_z, foot_l - top_bar_z - (tab_size / 2), (tab_size / 2) + gauge_side_x])
+    color("pink")
     rotate([90, 0, 90])
     TopTab(tab_hole, tab_ring, top_bar_z);
 
+  // Front mount
   translate([(front_leg_z / 2) + foot_z, top_bar_z + FRONT_PLATE_DEPTH, (tab_size / 2) + gauge_side_x])
+  rotate([90, 0, 0])
+    TopTab(tab_hole, tab_ring, top_bar_z);
+
+  // Back mount
+  translate([(front_leg_z / 2) + foot_z, foot_l, (tab_size / 2) + gauge_side_x])
   rotate([90, 0, 0])
     TopTab(tab_hole, tab_ring, top_bar_z);
 }
 
 module Middle() {
-  SideBar(false);
+  gauge_side_z = GAUGE_TAB_DEPTH + TAB_DEPTH;
+  SideBar(gauge_side_z, false);
 }
 
 module RightSide() {
-  SideBar(true);
+  gauge_side_z = FRONT_PLATE_DEPTH + GAUGE_TAB_DEPTH + TAB_DEPTH;
+  SideBar(gauge_side_z, true);
 }
 
 module LeftSide() {
+  gauge_side_z = FRONT_PLATE_DEPTH + GAUGE_TAB_DEPTH + TAB_DEPTH;
   mirror([1, 0, 0])
-    SideBar(true);
+    SideBar(gauge_side_z, true);
+}
+
+module TopPlate() {
+  h = FRONT_PLATE_DEPTH + GAUGE_TAB_DEPTH + GAUGE_LEN;
+  a = h * cos(GAUGE_MOUNT_ANGLE);
+
+  linear_extrude(FRONT_PLATE_DEPTH)
+    square(size = [(GAUGE_X * 4) + (FRONT_PLATE_DEPTH * 2), a + FRONT_PLATE_DEPTH]);
+
+  $fn = 90;
+  hole_diameter = 3.5;
+  tab_ring = 2;
+  shift = FRONT_PLATE_DEPTH + ((hole_diameter + tab_ring) / 2);
+  shift_y = (a + FRONT_PLATE_DEPTH) - shift;
+
+  translate([shift, shift_y])
+    color("red")
+    linear_extrude(FRONT_PLATE_DEPTH + 3)
+    circle(d = (hole_diameter - 0.3));
+
+  translate([((GAUGE_X * 4) + (FRONT_PLATE_DEPTH * 2)) - shift, shift_y])
+    color("red")
+    linear_extrude(FRONT_PLATE_DEPTH + 3)
+    circle(d = (hole_diameter - 0.3));
+
+  //rotate(GAUGE_MOUNT_ANGLE)
+      //square(size = [GAUGE_X + 5, GAUGE_Y], center = true);
 }
 
 file = 0;
@@ -225,9 +309,14 @@ if (file == "left_side.stl") { LeftSide(); }
 if (file == "right_side.stl") { RightSide(); }
 if (file == "middle.stl") { Middle(); }
 if (file == "front_plate.stl") { FrontPlate(); }
+if (file == "front_bottom_plate.stl") { FrontBottomPlate(); }
+if (file == "top_plate.stl") { TopPlate(); }
+
 //Gauge();
 //RightSide();
 //LeftSide();
 //Middle();
 //SideBar();
 //FrontPlate();
+//FrontBottomPlate();
+//TopPlate();
