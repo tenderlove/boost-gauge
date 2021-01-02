@@ -303,6 +303,8 @@ module TopPlate() {
       //square(size = [GAUGE_X + 5, GAUGE_Y], center = true);
 }
 
+use <pcb-case.scad>;
+
 file = 0;
 
 if (file == "left_side.stl") { LeftSide(); }
@@ -311,12 +313,16 @@ if (file == "middle.stl") { Middle(); }
 if (file == "front_plate.stl") { FrontPlate(); }
 if (file == "front_bottom_plate.stl") { FrontBottomPlate(); }
 if (file == "top_plate.stl") { TopPlate(); }
+if (file == "pcb_lid.stl") { PCBLid(32, 32, 1.5, 1.5); }
+if (file == "pcb_case.stl") { PCBCase(32, 32, 1.5, 1.5, peg_height = 2); }
 
 //Gauge();
-//RightSide();
+RightSide();
 //LeftSide();
 //Middle();
 //SideBar();
 //FrontPlate();
 //FrontBottomPlate();
 //TopPlate();
+//PCBLid(32, 32, 1.5, 1.5);
+//PCBCase(32, 32, 1.5, 1.5, peg_height = 2);
