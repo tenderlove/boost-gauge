@@ -248,16 +248,6 @@ module SideBar(gauge_side_z, wall) {
     color("pink")
     rotate([90, 0, 90])
     TopTab(tab_hole, tab_ring, top_bar_z);
-
-  // Front mount
-  translate([(front_leg_z / 2) + foot_z, top_bar_z + FRONT_PLATE_DEPTH, (tab_size / 2) + gauge_side_x])
-  rotate([90, 0, 0])
-    TopTab(tab_hole, tab_ring, top_bar_z);
-
-  // Back mount
-  translate([(front_leg_z / 2) + foot_z, foot_l, (tab_size / 2) + gauge_side_x])
-  rotate([90, 0, 0])
-    TopTab(tab_hole, tab_ring, top_bar_z);
 }
 
 module Middle() {
