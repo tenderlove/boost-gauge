@@ -199,7 +199,7 @@ module SideBar(gauge_side_z, wall) {
     // Foot
     translate([-(gauge_side_x / 2) - 5, -(radius / 2), 0])
       linear_extrude(foot_z)
-      square(size = [gauge_side_x + 5, foot_l]);
+      square(size = [gauge_side_x + 5, foot_l / 2]);
   }
 
   square_corner_rad = sqrt(pow(GAUGE_X / 2, 2) + pow(GAUGE_Y / 2, 2));
